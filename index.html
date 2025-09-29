@@ -152,8 +152,8 @@
 
         function salvarEstado() { filaAnterior = [...fila]; }
 
-        function renderizar() {
-            const corpo = document.getElementById("corpoTabela");
+        function renderizar(doc = isPiPActive && pipWindow ? pipWindow.document : document) {
+            const corpo = doc.getElementById("corpoTabela");
             corpo.innerHTML = "";
             fila.forEach((nome, i) => {
                 corpo.innerHTML += `
@@ -171,8 +171,8 @@
                     </tr>
                 `;
             });
-            document.getElementById("saida").value = ":r Ordem da fila: " + fila.join(" - ");
-            rebindEvents();
+            doc.getElementById("saida").value = ":r Ordem da fila: " + fila.join(" - ");
+            rebindEvents(doc);
         }
 
         function mover(i, dir) {
@@ -187,16 +187,16 @@
         function editar(i) { salvarEstado(); let novoNome = prompt("Editar nome:", fila[i]); if (novoNome) fila[i] = novoNome; renderizar(); }
         function adicionar() { 
             salvarEstado();
-            let nome = document.getElementById("inputNovoFuncionario").value.trim();
+            let nome = (isPiPActive && pipWindow ? pipWindow.document : document).getElementById("inputNovoFuncionario").value.trim();
             if (nome) {
                 fila.push(nome);
-                document.getElementById("inputNovoFuncionario").value = "";
+                (isPiPActive && pipWindow ? pipWindow.document : document).getElementById("inputNovoFuncionario").value = "";
                 renderizar(); 
             }
         }
         function avancar() { salvarEstado(); if (fila.length > 0) { fila.push(fila.shift()); renderizar(); } }
         function copiar() {
-            let texto = document.getElementById("saida").value;
+            let texto = (isPiPActive && pipWindow ? pipWindow.document : document).getElementById("saida").value;
             navigator.clipboard.writeText(texto).then(() => {
                 document.getElementById("notificacaoSound").play();
                 let popup = document.getElementById("popup");
@@ -207,8 +207,8 @@
         function restaurar() { let temp = [...fila]; fila = [...filaAnterior]; filaAnterior = [...temp]; renderizar(); }
 
         // Rebind de eventos sempre após renderizar
-        function rebindEvents() {
-            document.querySelectorAll("[data-action]").forEach(btn => {
+        function rebindEvents(doc = document) {
+            doc.querySelectorAll("[data-action]").forEach(btn => {
                 btn.onclick = () => {
                     let i = parseInt(btn.dataset.index);
                     switch (btn.dataset.action) {
@@ -227,7 +227,7 @@
             doc.getElementById("btnAvancar").onclick = avancar;
             doc.getElementById("btnCopiar").onclick = copiar;
             doc.getElementById("btnRestaurar").onclick = restaurar;
-            doc.getElementById("pipButton").onclick = togglePiP;
+            doc.getElementById("pipButton") && (doc.getElementById("pipButton").onclick = togglePiP);
         }
 
         // --- PiP ---
@@ -236,15 +236,14 @@
                 pipWindow = await documentPictureInPicture.requestWindow({ width: 480, height: 520 });
             } catch (e) { alert("Erro PiP"); return; }
 
-            pipWindow.document.body.appendChild(queueContent);
+            // Copia conteúdo para PiP
+            pipWindow.document.body.innerHTML = `
+                <div id="queueContent">${queueContent.innerHTML}</div>
+                <div class="footer-logo"><img src="https://i.imgur.com/DgK7zg0.png"></div>
+            `;
             const style = document.createElement('style');
             style.textContent = document.querySelector('style').textContent;
             pipWindow.document.head.appendChild(style);
-
-            const pipFooterLogo = document.createElement('div');
-            pipFooterLogo.className = 'footer-logo';
-            pipFooterLogo.innerHTML = '<img src="https://i.imgur.com/DgK7zg0.png">';
-            pipWindow.document.body.appendChild(pipFooterLogo);
 
             draggableContainer.classList.add('hidden-in-main');
             isPiPActive = true;
@@ -256,7 +255,6 @@
         }
         function closePiP() {
             if (!pipWindow) return;
-            draggableContainer.appendChild(queueContent);
             draggableContainer.classList.remove('hidden-in-main');
             pipWindow.close(); pipWindow = null;
             isPiPActive = false;
