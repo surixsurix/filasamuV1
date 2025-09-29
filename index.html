@@ -47,18 +47,25 @@
         .up, .down { background: blue; font-size: 20px; font-weight: bold; }
         .edit { background: dodgerblue; font-size: 20px; }
         .delete { background: red; font-size: 20px; }
-        .add { background: blue; }
         .next { background: red; }
         .copy { background: green; }
         .restore { background: gray; }
         .pip-button { background: orange; }
+        .add { background: blue; }
 
-        input {
-            width: 100%;
-            padding: 5px;
-            margin-top: 5px;
-            text-align: center;
+        input[type="text"] {
+            padding: 6px;
+            font-size: 14px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
         }
+        .add-section {
+            margin-top: 12px;
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+        }
+
         .action-buttons {
             display: flex;
             justify-content: center;
@@ -116,9 +123,14 @@
 
             <div style="margin-top:15px;">
                 <button class="restore" id="btnRestaurar">Restaurar</button>
-                <button class="add" id="btnAdicionar">Adicionar</button>
                 <button class="next" id="btnAvancar">Avançar</button>
                 <button class="copy" id="btnCopiar">Copiar</button>
+            </div>
+
+            <!-- NOVA SEÇÃO DE ADICIONAR -->
+            <div class="add-section">
+                <input type="text" id="inputNovoFuncionario" placeholder="Digite o nick">
+                <button class="add" id="btnAdicionar">Adicionar</button>
             </div>
         </div>
 
@@ -173,7 +185,15 @@
         }
         function remover(i) { salvarEstado(); fila.splice(i, 1); renderizar(); }
         function editar(i) { salvarEstado(); let novoNome = prompt("Editar nome:", fila[i]); if (novoNome) fila[i] = novoNome; renderizar(); }
-        function adicionar() { salvarEstado(); let nome = prompt("Digite o nome:"); if (nome) { fila.push(nome); renderizar(); } }
+        function adicionar() { 
+            salvarEstado();
+            let nome = document.getElementById("inputNovoFuncionario").value.trim();
+            if (nome) {
+                fila.push(nome);
+                document.getElementById("inputNovoFuncionario").value = "";
+                renderizar(); 
+            }
+        }
         function avancar() { salvarEstado(); if (fila.length > 0) { fila.push(fila.shift()); renderizar(); } }
         function copiar() {
             let texto = document.getElementById("saida").value;
@@ -202,16 +222,18 @@
         }
 
         // Botões principais
-        document.getElementById("btnAdicionar").onclick = adicionar;
-        document.getElementById("btnAvancar").onclick = avancar;
-        document.getElementById("btnCopiar").onclick = copiar;
-        document.getElementById("btnRestaurar").onclick = restaurar;
-        document.getElementById("pipButton").onclick = togglePiP;
+        function bindMainButtons(doc) {
+            doc.getElementById("btnAdicionar").onclick = adicionar;
+            doc.getElementById("btnAvancar").onclick = avancar;
+            doc.getElementById("btnCopiar").onclick = copiar;
+            doc.getElementById("btnRestaurar").onclick = restaurar;
+            doc.getElementById("pipButton").onclick = togglePiP;
+        }
 
         // --- PiP ---
         async function openPiP() {
             try {
-                pipWindow = await documentPictureInPicture.requestWindow({ width: 480, height: 500 });
+                pipWindow = await documentPictureInPicture.requestWindow({ width: 480, height: 520 });
             } catch (e) { alert("Erro PiP"); return; }
 
             pipWindow.document.body.appendChild(queueContent);
@@ -228,7 +250,9 @@
             isPiPActive = true;
             document.getElementById("pipButton").textContent = "Voltar para Aba ↩️";
             pipWindow.addEventListener('pagehide', closePiP);
-            renderizar(); // rebind dentro do PiP
+
+            bindMainButtons(pipWindow.document);
+            renderizar();
         }
         function closePiP() {
             if (!pipWindow) return;
@@ -237,10 +261,13 @@
             pipWindow.close(); pipWindow = null;
             isPiPActive = false;
             document.getElementById("pipButton").textContent = "PiP Externo 🖼️";
+            bindMainButtons(document);
             renderizar();
         }
         function togglePiP() { pipWindow ? closePiP() : openPiP(); }
 
+        // Inicialização
+        bindMainButtons(document);
         renderizar();
     </script>
 </body>
