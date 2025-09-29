@@ -58,6 +58,7 @@
             font-size: 14px;
             border-radius: 6px;
             border: 1px solid #ccc;
+            width: calc(100% - 12px);
         }
         .add-section {
             margin-top: 12px;
@@ -152,6 +153,7 @@
 
         function salvarEstado() { filaAnterior = [...fila]; }
 
+        // renderizar aceita o document alvo
         function renderizar(doc = isPiPActive && pipWindow ? pipWindow.document : document) {
             const corpo = doc.getElementById("corpoTabela");
             corpo.innerHTML = "";
@@ -185,29 +187,72 @@
         }
         function remover(i) { salvarEstado(); fila.splice(i, 1); renderizar(); }
         function editar(i) { salvarEstado(); let novoNome = prompt("Editar nome:", fila[i]); if (novoNome) fila[i] = novoNome; renderizar(); }
-        function adicionar() { 
+
+        function adicionar(doc = isPiPActive && pipWindow ? pipWindow.document : document) { 
             salvarEstado();
-            let nome = (isPiPActive && pipWindow ? pipWindow.document : document).getElementById("inputNovoFuncionario").value.trim();
+            let nome = doc.getElementById("inputNovoFuncionario").value.trim();
             if (nome) {
                 fila.push(nome);
-                (isPiPActive && pipWindow ? pipWindow.document : document).getElementById("inputNovoFuncionario").value = "";
+                doc.getElementById("inputNovoFuncionario").value = "";
                 renderizar(); 
             }
         }
         function avancar() { salvarEstado(); if (fila.length > 0) { fila.push(fila.shift()); renderizar(); } }
-        function copiar() {
-            let texto = (isPiPActive && pipWindow ? pipWindow.document : document).getElementById("saida").value;
-            navigator.clipboard.writeText(texto).then(() => {
-                document.getElementById("notificacaoSound").play();
-                let popup = document.getElementById("popup");
-                popup.classList.add("show");
-                setTimeout(() => popup.classList.remove("show"), 3000);
-            }).catch(() => alert("Erro ao copiar"));
+
+        // copiar agora aceita um doc e tenta navigator.clipboard do window daquele doc,
+        // com fallback para execCommand se necessário.
+        function copiar(doc = isPiPActive && pipWindow ? pipWindow.document : document) {
+            const win = doc.defaultView || window;
+            const texto = doc.getElementById("saida").value;
+            const clipboard = win.navigator && win.navigator.clipboard;
+
+            function showMainPopup() {
+                try {
+                    document.getElementById("notificacaoSound").play();
+                } catch(e){}
+                const popup = document.getElementById("popup");
+                if (popup) {
+                    popup.classList.add("show");
+                    setTimeout(() => popup.classList.remove("show"), 3000);
+                }
+            }
+
+            function fallbackCopy(textoLocal, docLocal) {
+                try {
+                    const ta = docLocal.createElement('textarea');
+                    ta.value = textoLocal;
+                    ta.style.position = 'fixed';
+                    ta.style.left = '-9999px';
+                    docLocal.body.appendChild(ta);
+                    ta.select();
+                    const winLocal = docLocal.defaultView || window;
+                    const success = winLocal.document.execCommand && winLocal.document.execCommand('copy');
+                    docLocal.body.removeChild(ta);
+                    if (success) {
+                        showMainPopup();
+                    } else {
+                        alert("Erro ao copiar");
+                    }
+                } catch (e) {
+                    alert("Erro ao copiar");
+                }
+            }
+
+            if (clipboard && typeof clipboard.writeText === 'function') {
+                clipboard.writeText(texto).then(() => {
+                    showMainPopup();
+                }).catch(() => {
+                    fallbackCopy(texto, doc);
+                });
+            } else {
+                fallbackCopy(texto, doc);
+            }
         }
+
         function restaurar() { let temp = [...fila]; fila = [...filaAnterior]; filaAnterior = [...temp]; renderizar(); }
 
         // Rebind de eventos sempre após renderizar
-        function rebindEvents(doc = document) {
+        function rebindEvents(doc = isPiPActive && pipWindow ? pipWindow.document : document) {
             doc.querySelectorAll("[data-action]").forEach(btn => {
                 btn.onclick = () => {
                     let i = parseInt(btn.dataset.index);
@@ -221,13 +266,19 @@
             });
         }
 
-        // Botões principais
+        // Botões principais: sempre passa o doc alvo ao handler via wrapper
         function bindMainButtons(doc) {
-            doc.getElementById("btnAdicionar").onclick = adicionar;
-            doc.getElementById("btnAvancar").onclick = avancar;
-            doc.getElementById("btnCopiar").onclick = copiar;
-            doc.getElementById("btnRestaurar").onclick = restaurar;
-            doc.getElementById("pipButton") && (doc.getElementById("pipButton").onclick = togglePiP);
+            const addBtn = doc.getElementById("btnAdicionar");
+            const avancarBtn = doc.getElementById("btnAvancar");
+            const copiarBtn = doc.getElementById("btnCopiar");
+            const restaurarBtn = doc.getElementById("btnRestaurar");
+            const pipBtn = doc.getElementById("pipButton");
+
+            if (addBtn) addBtn.onclick = () => adicionar(doc);
+            if (avancarBtn) avancarBtn.onclick = () => { avancar(); };
+            if (copiarBtn) copiarBtn.onclick = () => copiar(doc);
+            if (restaurarBtn) restaurarBtn.onclick = () => restaurar();
+            if (pipBtn) pipBtn.onclick = togglePiP;
         }
 
         // --- PiP ---
@@ -236,7 +287,7 @@
                 pipWindow = await documentPictureInPicture.requestWindow({ width: 480, height: 520 });
             } catch (e) { alert("Erro PiP"); return; }
 
-            // Copia conteúdo para PiP
+            // Copia o conteúdo (innerHTML) para o PiP — não movemos nós reais
             pipWindow.document.body.innerHTML = `
                 <div id="queueContent">${queueContent.innerHTML}</div>
                 <div class="footer-logo"><img src="https://i.imgur.com/DgK7zg0.png"></div>
@@ -250,8 +301,9 @@
             document.getElementById("pipButton").textContent = "Voltar para Aba ↩️";
             pipWindow.addEventListener('pagehide', closePiP);
 
+            // rebind no doc do PiP
             bindMainButtons(pipWindow.document);
-            renderizar();
+            renderizar(); // renderiza no contexto correto
         }
         function closePiP() {
             if (!pipWindow) return;
