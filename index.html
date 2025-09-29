@@ -2,327 +2,312 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jogo da Memória</title>
+    <title>Fila de Atendimento - SAMU</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #f0f0f0;
+            background: #f5f5f5;
+            min-height: 100vh;
             margin: 0;
             padding: 20px;
         }
 
-        h1 {
-            color: #333;
-        }
-
-        .game-info {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-            max-width: 600px;
-            margin-bottom: 20px;
-        }
-
-        .board {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            width: 100%;
-            max-width: 600px;
-            padding: 10px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .card {
-            width: 100%;
-            height: 100px;
-            position: relative;
-            transform-style: preserve-3d;
-            transition: transform 0.6s;
-            cursor: pointer;
-        }
-
-        .card.is-flipped {
-            transform: rotateY(180deg);
-        }
-
-        .card .card-face {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            backface-visibility: hidden;
-            border-radius: 6px;
-            border: 2px solid #333;
-        }
-
-        .card .card-back {
-            background-color: #6a0dad;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-size: 2em;
-        }
-
-        .card .card-front {
-            background-color: #e6e6fa;
-            transform: rotateY(180deg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2em;
-        }
-
-        #scoreboard {
-            margin-top: 20px;
-            width: 100%;
-            max-width: 600px;
-            background-color: #fff;
+        /* Estilo padrão do CONTAINER no modo normal (agora sempre centralizado) */
+        .container {
+            background: white;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        #scoreboard h2 {
-            margin-top: 0;
-        }
-
-        #scoreboard ol {
-            padding-left: 20px;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal-content {
-            background-color: #fff;
-            padding: 30px;
             border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            width: 420px;
             text-align: center;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            margin: 20px auto; /* Centraliza o container na tela */
         }
 
-        .modal-content input {
+        /* Esconde o container principal quando ele está no PiP */
+        .container.hidden-in-main {
+            display: none !important;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        th, td {
+            border-bottom: 1px solid #ddd;
+            text-align: center;
             padding: 8px;
-            margin: 10px 0;
-            width: 80%;
+        }
+        button {
+            border: none;
+            padding: 6px 10px;
+            margin: 2px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: white;
+            font-size: 16px;
+        }
+        .up { background: blue; font-size: 20px; font-weight: bold; }
+        .down { background: blue; font-size: 20px; font-weight: bold; }
+        .edit { background: dodgerblue; font-size: 20px; }
+        .delete { background: red; font-size: 20px; }
+        .add { background: blue; }
+        .next { background: red; }
+        .copy { background: green; }
+        .restore { background: gray; }
+        .pip-button { background: orange; }
+
+        input {
+            width: 100%;
+            padding: 5px;
+            margin-top: 5px;
+            text-align: center;
+        }
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
         }
 
-        .modal-content button {
-            padding: 10px 20px;
-            border: none;
-            background-color: #6a0dad;
-            color: #fff;
-            cursor: pointer;
-            border-radius: 5px;
+        /* Estilo da logo no rodapé */
+        .footer-logo {
+            margin-top: 20px; /* Espaçamento acima da logo */
+            text-align: center; /* Centraliza a imagem */
+        }
+        .footer-logo img {
+            max-width: 150px; /* Define um tamanho máximo para a logo */
+            height: auto;
+            opacity: 0.7; /* Suaviza um pouco a logo */
+        }
+
+        /* Estilo da notificação popup */
+        #popup {
+            position: fixed;
+            bottom: -60px;
+            right: 20px;
+            background: #323232;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            opacity: 0;
+            transition: all 0.6s ease;
+            font-size: 14px;
+            z-index: 1000;
+        }
+        #popup.show {
+            bottom: 20px;
+            opacity: 1;
         }
     </style>
 </head>
 <body>
-    <h1>Jogo da Memória</h1>
-    <div class="game-info">
-        <div>Movimentos: <span id="moves">0</span></div>
-        <div>Pares Encontrados: <span id="matched-pairs">0</span>/8</div>
-    </div>
-    <div class="board"></div>
+    <div class="container" id="draggableContainer">
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+            <button class="pip-button" onclick="togglePiP()" id="pipButton">PiP Externo 🖼️</button>
+        </div>
+        <hr>
+        
+        <div id="queueContent">
+            <h2>Fila de Despacho - SAMU 192</h2>
+            <table id="tabela">
+                <thead>
+                    <tr>
+                        <th>Prioridade</th>
+                        <th>Técnico/Socorrista</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabela"></tbody>
+            </table>
 
-    <div id="scoreboard">
-        <h2>Ranking de Pontuações</h2>
-        <ol id="rank-list"></ol>
-    </div>
+            <input type="text" id="saida" readonly>
 
-    <div id="winnerModal" class="modal">
-        <div class="modal-content">
-            <h2>Parabéns! Você venceu!</h2>
-            <p>Seu número de movimentos: <span id="finalMoves">0</span></p>
-            <p>Digite seu nome para salvar sua pontuação:</p>
-            <input type="text" id="playerName" placeholder="Seu nome">
-            <button id="saveScoreButton">Salvar Pontuação</button>
+            <div style="margin-top:15px;">
+                <button class="restore" onclick="restaurar()">Restaurar</button>
+                <button class="add" onclick="adicionar()">Adicionar</button>
+                <button class="next" onclick="avancar()">Avançar</button>
+                <button class="copy" onclick="copiar()">Copiar</button>
+            </div>
+        </div>
+
+        <div class="footer-logo">
+            <img src="https://i.imgur.com/DgK7zg0.png" alt="Logo SAMU">
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    <div id="popup">Fila copiada!</div>
 
-        // Cole a configuração do seu Firebase AQUI, conforme a imagem fornecida
-        const firebaseConfig = {
-            apiKey: "AIzaSyCR9mVu8ifdJdSV5psQxgKv-tjERM7WJ2A",
-            authDomain: "jododamemoria.firebaseapp.com",
-            projectId: "jododamemoria",
-            storageBucket: "jododamemoria.firebasestorage.app",
-            messagingSenderId: "628882650020",
-            appId: "1:628882650020:web:d38af5fcf33a8894974731",
-            measurementId: "G-0M0351L542"
-        };
-        
-        // Inicializa o Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+    <audio id="notificacaoSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg" preload="auto"></audio>
 
-        // --- Lógica do Jogo ---
-        const board = document.querySelector('.board');
-        const movesSpan = document.getElementById('moves');
-        const matchedPairsSpan = document.getElementById('matched-pairs');
-        const rankList = document.getElementById('rank-list');
-        const winnerModal = document.getElementById('winnerModal');
-        const finalMovesSpan = document.getElementById('finalMoves');
-        const playerNameInput = document.getElementById('playerName');
-        const saveScoreButton = document.getElementById('saveScoreButton');
+    <script>
+        // --- VARIÁVEIS E LÓGICA DA FILA ---
+        let fila = ["nay", "kaue", "carti"];
+        let filaAnterior = [...fila];
 
-        let cards = ['A', 'A', 'B', 'B', 'C', 'C', 'D', 'D', 'E', 'E', 'F', 'F', 'G', 'G', 'H', 'H'];
-        let hasFlippedCard = false;
-        let lockBoard = false;
-        let firstCard, secondCard;
-        let moves = 0;
-        let matchedPairs = 0;
-
-        function shuffle(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
+        function salvarEstado() {
+            filaAnterior = [...fila];
         }
 
-        function createBoard() {
-            shuffle(cards);
-            board.innerHTML = '';
-            cards.forEach(cardValue => {
-                const card = document.createElement('div');
-                card.classList.add('card');
-                card.dataset.value = cardValue;
-                card.innerHTML = `
-                    <div class="card-face card-back">?</div>
-                    <div class="card-face card-front">${cardValue}</div>
+        function renderizar() {
+            const corpo = document.getElementById("corpoTabela");
+            corpo.innerHTML = "";
+            fila.forEach((nome, i) => {
+                corpo.innerHTML += `
+                    <tr>
+                        <td>${i+1}</td>
+                        <td>${nome}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="up" onclick="mover(${i}, -1)">⬆️</button>
+                                <button class="down" onclick="mover(${i}, 1)">⬇️</button>
+                                <button class="edit" onclick="editar(${i})">✏️</button>
+                                <button class="delete" onclick="remover(${i})">❌</button>
+                            </div>
+                        </td>
+                    </tr>
                 `;
-                card.addEventListener('click', flipCard);
-                board.appendChild(card);
+            });
+            document.getElementById("saida").value = ":r Fila de Despacho (SAMU): " + fila.join(" - ");
+        }
+
+        function mover(i, dir) {
+            salvarEstado();
+            let novo = i + dir;
+            if (novo >= 0 && novo < fila.length) {
+                [fila[i], fila[novo]] = [fila[novo], fila[i]];
+                renderizar();
+            }
+        }
+
+        function remover(i) {
+            salvarEstado();
+            fila.splice(i, 1);
+            renderizar();
+        }
+
+        function editar(i) {
+            salvarEstado();
+            let novoNome = prompt("Editar nome ou indicativo da equipe/ambulância:", fila[i]);
+            if (novoNome) fila[i] = novoNome;
+            renderizar();
+        }
+
+        function adicionar() {
+            salvarEstado();
+            let nome = prompt("Digite o nome ou indicativo da equipe/ambulância:");
+            if (nome) {
+                fila.push(nome);
+                renderizar();
+            }
+        }
+
+        function avancar() {
+            salvarEstado();
+            if (fila.length > 0) {
+                fila.push(fila.shift());
+                renderizar();
+            }
+        }
+
+        function copiar() {
+            let texto = document.getElementById("saida");
+            
+            navigator.clipboard.writeText(texto.value).then(() => {
+                document.getElementById("notificacaoSound").play();
+
+                let popup = document.getElementById("popup");
+                popup.classList.add("show");
+
+                setTimeout(() => {
+                    popup.classList.remove("show");
+                }, 5000);
+            }).catch(err => {
+                console.error('Erro ao copiar: ', err);
+                try {
+                    texto.select();
+                    document.execCommand("copy");
+                } catch (fail) {
+                    console.error('Falha no fallback de cópia: ', fail);
+                }
             });
         }
 
-        function flipCard() {
-            if (lockBoard) return;
-            if (this === firstCard) return;
+        function restaurar() {
+            let temp = [...fila];
+            fila = [...filaAnterior];
+            filaAnterior = [...temp];
+            renderizar();
+        }
 
-            this.classList.add('is-flipped');
+        // --- CÓDIGO DO DOCUMENT PICTURE-IN-PICTURE ---
+        let pipWindow = null;
+        const draggableContainer = document.getElementById("draggableContainer");
+        const queueContent = document.getElementById('queueContent');
+        let isPiPActive = false;
 
-            if (!hasFlippedCard) {
-                hasFlippedCard = true;
-                firstCard = this;
+        function togglePiP() {
+            if (!('documentPictureInPicture' in window)) {
+                alert("O PiP Externo (Document PiP API) não é suportado pelo seu navegador (use o Chrome mais recente).");
                 return;
             }
 
-            secondCard = this;
-            moves++;
-            movesSpan.textContent = moves;
-
-            checkForMatch();
-        }
-
-        function checkForMatch() {
-            let isMatch = firstCard.dataset.value === secondCard.dataset.value;
-            isMatch ? disableCards() : unflipCards();
-        }
-
-        function disableCards() {
-            firstCard.removeEventListener('click', flipCard);
-            secondCard.removeEventListener('click', flipCard);
-            
-            matchedPairs++;
-            matchedPairsSpan.textContent = matchedPairs;
-
-            resetBoard();
-
-            if (matchedPairs === cards.length / 2) {
-                showWinnerModal();
+            if (pipWindow) {
+                closePiP();
+            } else {
+                openPiP();
             }
         }
 
-        function unflipCards() {
-            lockBoard = true;
-            setTimeout(() => {
-                firstCard.classList.remove('is-flipped');
-                secondCard.classList.remove('is-flipped');
-                resetBoard();
-            }, 1000);
-        }
-
-        function resetBoard() {
-            [hasFlippedCard, lockBoard] = [false, false];
-            [firstCard, secondCard] = [null, null];
-        }
-
-        function showWinnerModal() {
-            finalMovesSpan.textContent = moves;
-            winnerModal.style.display = 'flex';
-        }
-
-        // --- Interação com o Banco de Dados (Firebase) ---
-        async function saveScore() {
-            const playerName = playerNameInput.value.trim();
-            if (playerName === "") {
-                alert("Por favor, digite seu nome.");
-                return;
-            }
+        async function openPiP() {
             try {
-                await addDoc(collection(db, "pontuacoes"), {
-                    nome: playerName,
-                    pontuacao: moves,
-                    data: new Date()
+                pipWindow = await documentPictureInPicture.requestWindow({
+                    width: 350,
+                    height: 500
                 });
-                alert("Pontuação salva com sucesso!");
-                winnerModal.style.display = 'none';
-                loadScores();
-                resetGame();
-            } catch (e) {
-                console.error("Erro ao salvar a pontuação: ", e);
-                alert("Erro ao salvar a pontuação.");
+            } catch (error) {
+                console.error("Erro ao abrir a janela PiP:", error);
+                return;
             }
-        }
 
-        async function loadScores() {
-            const pontuacoesRef = collection(db, "pontuacoes");
-            const q = query(pontuacoesRef, orderBy("pontuacao")); // Ordena por pontuação (menor é melhor)
-            const querySnapshot = await getDocs(q);
+            pipWindow.document.body.appendChild(queueContent);
+
+            const style = document.createElement('style');
+            style.textContent = document.querySelector('style').textContent;
+            pipWindow.document.head.appendChild(style);
+
+            // Adiciona a logo ao PiP também
+            const pipFooterLogo = document.createElement('div');
+            pipFooterLogo.className = 'footer-logo';
+            pipFooterLogo.innerHTML = '<img src="https://i.imgur.com/DgK7zg0.png" alt="Logo SAMU">';
+            pipWindow.document.body.appendChild(pipFooterLogo);
+
+
+            draggableContainer.classList.add('hidden-in-main');
             
-            rankList.innerHTML = '';
-            querySnapshot.forEach((doc) => {
-                const li = document.createElement('li');
-                const data = doc.data();
-                li.textContent = `${data.nome} - ${data.pontuacao} movimentos`;
-                rankList.appendChild(li);
-            });
+            isPiPActive = true;
+            document.getElementById("pipButton").textContent = "Voltar para Aba ↩️";
+
+            pipWindow.addEventListener('pagehide', closePiP);
         }
 
-        function resetGame() {
-            moves = 0;
-            matchedPairs = 0;
-            movesSpan.textContent = 0;
-            matchedPairsSpan.textContent = 0;
-            createBoard();
+        function closePiP() {
+            if (!pipWindow) return;
+
+            draggableContainer.appendChild(queueContent);
+            
+            draggableContainer.classList.remove('hidden-in-main');
+
+            pipWindow.close();
+            pipWindow = null;
+
+            isPiPActive = false;
+            document.getElementById("pipButton").textContent = "PiP Externo 🖼️";
+            
+            renderizar(); 
         }
 
-        saveScoreButton.addEventListener('click', saveScore);
-        
-        // Inicializa o jogo e carrega as pontuações ao carregar a página
-        createBoard();
-        loadScores();
-
+        renderizar();
     </script>
 </body>
 </html>
