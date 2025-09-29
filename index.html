@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Fila de Atendimento - SAMU🚑 </title>
+    <title>Fila de Atendimento - SAMU🚑</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,22 +12,20 @@
             padding: 20px;
         }
 
-        /* Estilo padrão do CONTAINER no modo normal (LARGURA AUMENTADA PARA 480PX) */
         .container {
             background: white;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            width: 480px; /* Aumentado para cobrir toda a parte interna */
+            width: 480px;
             text-align: center;
-            margin: 20px auto; 
+            margin: 20px auto;
         }
 
-        /* Esconde o container principal quando ele está no PiP */
         .container.hidden-in-main {
             display: none !important;
         }
-        
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -69,7 +67,6 @@
             gap: 6px;
         }
 
-        /* Estilo da logo no rodapé */
         .footer-logo {
             margin-top: 20px;
             text-align: center;
@@ -80,7 +77,6 @@
             opacity: 0.7;
         }
 
-        /* Estilo da notificação popup */
         #popup {
             position: fixed;
             bottom: -60px;
@@ -104,7 +100,7 @@
 <body>
     <div class="container" id="draggableContainer">
         <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
-            <button class="pip-button" onclick="togglePiP()" id="pipButton">PiP Externo 🖼️</button>
+            <button class="pip-button" id="pipButton">PiP Externo 🖼️</button>
         </div>
         <hr>
         
@@ -124,10 +120,10 @@
             <input type="text" id="saida" readonly>
 
             <div style="margin-top:15px;">
-                <button class="restore" onclick="restaurar()">Restaurar</button>
-                <button class="add" onclick="adicionar()">Adicionar</button>
-                <button class="next" onclick="avancar()">Avançar</button>
-                <button class="copy" onclick="copiar()">Copiar</button>
+                <button class="restore" id="btnRestaurar">Restaurar</button>
+                <button class="add" id="btnAdicionar">Adicionar</button>
+                <button class="next" id="btnAvancar">Avançar</button>
+                <button class="copy" id="btnCopiar">Copiar</button>
             </div>
         </div>
 
@@ -138,10 +134,9 @@
 
     <div id="popup">Fila copiada!</div>
 
-    <audio id="notificacaoSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg" preload="auto"></audio>
-
     <script>
-        // --- VARIÁVEIS E LÓGICA DA FILA ---
+        const NOTIF_SOUND_URL = "https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg";
+
         let fila = ["nay", "kaue", "carti"];
         let filaAnterior = [...fila];
 
@@ -149,8 +144,10 @@
             filaAnterior = [...fila];
         }
 
-        function renderizar() {
-            const corpo = document.getElementById("corpoTabela");
+        function renderizar(doc = document) {
+            const corpo = doc.getElementById("corpoTabela");
+            if (!corpo) return;
+
             corpo.innerHTML = "";
             fila.forEach((nome, i) => {
                 corpo.innerHTML += `
@@ -159,17 +156,18 @@
                         <td>${nome}</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="up" onclick="mover(${i}, -1)">⬆️</button>
-                                <button class="down" onclick="mover(${i}, 1)">⬇️</button>
-                                <button class="edit" onclick="editar(${i})">✏️</button>
-                                <button class="delete" onclick="remover(${i})">❌</button>
+                                <button class="up" data-action="move" data-dir="-1" data-index="${i}">⬆️</button>
+                                <button class="down" data-action="move" data-dir="1" data-index="${i}">⬇️</button>
+                                <button class="edit" data-action="edit" data-index="${i}">✏️</button>
+                                <button class="delete" data-action="remove" data-index="${i}">❌</button>
                             </div>
                         </td>
                     </tr>
                 `;
             });
-            // Texto de saída atualizado com o novo título
-            document.getElementById("saida").value = ":r Ordem da fila: " + fila.join(" - ");
+
+            const saida = doc.getElementById("saida");
+            if (saida) saida.value = ":r Ordem da fila: " + fila.join(" - ");
         }
 
         function mover(i, dir) {
@@ -177,21 +175,21 @@
             let novo = i + dir;
             if (novo >= 0 && novo < fila.length) {
                 [fila[i], fila[novo]] = [fila[novo], fila[i]];
-                renderizar();
+                renderizar(activeDoc());
             }
         }
 
         function remover(i) {
             salvarEstado();
             fila.splice(i, 1);
-            renderizar();
+            renderizar(activeDoc());
         }
 
         function editar(i) {
             salvarEstado();
             let novoNome = prompt("Editar nome ou indicativo da equipe/ambulância:", fila[i]);
             if (novoNome) fila[i] = novoNome;
-            renderizar();
+            renderizar(activeDoc());
         }
 
         function adicionar() {
@@ -199,7 +197,7 @@
             let nome = prompt("Digite o nome ou indicativo da equipe/ambulância:");
             if (nome) {
                 fila.push(nome);
-                renderizar();
+                renderizar(activeDoc());
             }
         }
 
@@ -207,110 +205,141 @@
             salvarEstado();
             if (fila.length > 0) {
                 fila.push(fila.shift());
-                renderizar();
+                renderizar(activeDoc());
             }
         }
 
-        function copiar() {
-            let texto = document.getElementById("saida");
-            
-            navigator.clipboard.writeText(texto.value).then(() => {
-                document.getElementById("notificacaoSound").play();
+        function copiar(doc) {
+            const win = doc.defaultView;
+            const textoElem = doc.getElementById("saida");
+            const valor = textoElem ? textoElem.value : (":r Ordem da fila: " + fila.join(" - "));
 
-                let popup = document.getElementById("popup");
-                popup.classList.add("show");
+            if (win.navigator.clipboard && typeof win.navigator.clipboard.writeText === "function") {
+                win.navigator.clipboard.writeText(valor).then(() => {
+                    try {
+                        new win.Audio(NOTIF_SOUND_URL).play().catch(()=>{});
+                    } catch(e){}
+                    showPopup(doc);
+                }).catch(() => fallback());
+            } else {
+                fallback();
+            }
 
-                setTimeout(() => {
-                    popup.classList.remove("show");
-                }, 5000);
-            }).catch(err => {
-                console.error('Erro ao copiar: ', err);
+            function fallback() {
                 try {
-                    texto.select();
-                    document.execCommand("copy");
-                } catch (fail) {
-                    console.error('Falha no fallback de cópia: ', fail);
+                    textoElem.select();
+                    if (doc.execCommand("copy")) {
+                        new win.Audio(NOTIF_SOUND_URL).play().catch(()=>{});
+                        showPopup(doc);
+                    }
+                } catch (e) {
+                    alert("Falha ao copiar.");
                 }
-            });
+            }
+        }
+
+        function showPopup(doc) {
+            const popup = doc.getElementById("popup");
+            if (!popup) return;
+            popup.classList.add("show");
+            setTimeout(() => popup.classList.remove("show"), 3000);
         }
 
         function restaurar() {
             let temp = [...fila];
             fila = [...filaAnterior];
             filaAnterior = [...temp];
-            renderizar();
+            renderizar(activeDoc());
         }
 
-        // --- CÓDIGO DO DOCUMENT PICTURE-IN-PICTURE ---
+        // ---- PIP ----
         let pipWindow = null;
         const draggableContainer = document.getElementById("draggableContainer");
-        const queueContent = document.getElementById('queueContent');
-        let isPiPActive = false;
+        const queueContent = document.getElementById("queueContent");
 
-        function togglePiP() {
-            if (!('documentPictureInPicture' in window)) {
-                alert("O PiP Externo (Document PiP API) não é suportado pelo seu navegador (use o Chrome mais recente).");
-                return;
-            }
+        function activeDoc() {
+            return (pipWindow && pipWindow.document) ? pipWindow.document : document;
+        }
 
-            if (pipWindow) {
-                closePiP();
-            } else {
-                openPiP();
-            }
+        function bindUI(doc) {
+            // Restaurar
+            doc.getElementById("btnRestaurar").onclick = restaurar;
+            // Avançar
+            doc.getElementById("btnAvancar").onclick = avancar;
+            // Adicionar
+            doc.getElementById("btnAdicionar").onclick = adicionar;
+            // Copiar
+            doc.getElementById("btnCopiar").onclick = () => copiar(doc);
+
+            // Delegação tabela
+            const corpo = doc.getElementById("corpoTabela");
+            corpo.onclick = (e) => {
+                const t = e.target;
+                if (t.dataset.action) {
+                    const i = parseInt(t.dataset.index);
+                    if (t.dataset.action === "move") mover(i, parseInt(t.dataset.dir));
+                    if (t.dataset.action === "edit") editar(i);
+                    if (t.dataset.action === "remove") remover(i);
+                }
+            };
         }
 
         async function openPiP() {
             try {
-                // Largura do PiP ajustada para a nova largura
                 pipWindow = await documentPictureInPicture.requestWindow({
-                    width: 480, 
+                    width: 480,
                     height: 500
                 });
-            } catch (error) {
-                console.error("Erro ao abrir a janela PiP:", error);
+            } catch (e) {
+                alert("Erro ao abrir PiP: " + e);
                 return;
             }
 
             pipWindow.document.body.appendChild(queueContent);
 
-            const style = document.createElement('style');
-            style.textContent = document.querySelector('style').textContent;
+            const style = document.createElement("style");
+            style.textContent = document.querySelector("style").textContent;
             pipWindow.document.head.appendChild(style);
 
-            // Adiciona a logo ao PiP
-            const pipFooterLogo = document.createElement('div');
-            pipFooterLogo.className = 'footer-logo';
-            pipFooterLogo.innerHTML = '<img src="https://i.imgur.com/DgK7zg0.png" alt="Logo SAMU">';
+            const pipFooterLogo = document.createElement("div");
+            pipFooterLogo.className = "footer-logo";
+            pipFooterLogo.innerHTML = '<img src="https://i.imgur.com/DgK7zg0.png">';
             pipWindow.document.body.appendChild(pipFooterLogo);
 
+            draggableContainer.classList.add("hidden-in-main");
 
-            draggableContainer.classList.add('hidden-in-main');
-            
-            isPiPActive = true;
+            bindUI(pipWindow.document);
+            renderizar(pipWindow.document);
+
             document.getElementById("pipButton").textContent = "Voltar para Aba ↩️";
-
-            pipWindow.addEventListener('pagehide', closePiP);
+            pipWindow.addEventListener("pagehide", closePiP);
         }
 
         function closePiP() {
             if (!pipWindow) return;
-
             draggableContainer.appendChild(queueContent);
-            
-            draggableContainer.classList.remove('hidden-in-main');
-
+            draggableContainer.classList.remove("hidden-in-main");
             pipWindow.close();
             pipWindow = null;
-
-            isPiPActive = false;
+            bindUI(document);
+            renderizar(document);
             document.getElementById("pipButton").textContent = "PiP Externo 🖼️";
-            
-            renderizar(); 
         }
 
-        renderizar();
+        function togglePiP() {
+            if (!("documentPictureInPicture" in window)) {
+                alert("Seu navegador não suporta Document PiP.");
+                return;
+            }
+            if (pipWindow) closePiP();
+            else openPiP();
+        }
+
+        document.getElementById("pipButton").onclick = togglePiP;
+
+        // Inicial
+        bindUI(document);
+        renderizar(document);
     </script>
 </body>
 </html>
-
