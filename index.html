@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background: #0000FF; /* Fundo azul */
+            background: #ADD8E6; /* Fundo azul bebê */
             min-height: 100vh;
             margin: 0;
             padding: 20px;
@@ -299,13 +299,21 @@
                 pipWindow = await documentPictureInPicture.requestWindow({ width: 480, height: 520 });
             } catch (e) { alert("Erro PiP"); return; }
 
-            // Copia o conteúdo (innerHTML) para o PiP — não movemos nós reais
+            // Copia o conteúdo (innerHTML) para o PiP
+            // O container (fundo branco) é copiado.
             pipWindow.document.body.innerHTML = `
                 <div id="queueContent">${queueContent.innerHTML}</div>
                 <div class="footer-logo"><img src="https://i.imgur.com/DgK7zg0.png"></div>
             `;
+            
+            // Copia os estilos
             const style = document.createElement('style');
             style.textContent = document.querySelector('style').textContent;
+            
+            // Adiciona um estilo local para forçar o fundo do body do PiP a ser branco
+            const pipBodyStyle = `body { background: white !important; }`;
+            style.textContent += pipBodyStyle; 
+            
             pipWindow.document.head.appendChild(style);
 
             draggableContainer.classList.add('hidden-in-main');
