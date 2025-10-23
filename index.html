@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background: #f5f5f5;
+            background: #0000FF; /* Fundo azul */
             min-height: 100vh;
             margin: 0;
             padding: 20px;
@@ -44,8 +44,20 @@
             cursor: pointer;
             color: white;
             font-size: 16px;
+            transition: transform 0.1s ease-out, background-color 0.1s ease-out; /* Animação ao clicar e para a cor de fundo */
         }
-        .up, .down { background: blue; font-size: 20px; font-weight: bold; }
+        button:active {
+            transform: scale(0.95); /* Efeito de "clique" */
+        }
+
+        /* Novas estilizações para os botões de seta */
+        .up, .down { 
+            background: blue; 
+            font-size: 20px; 
+            font-weight: bold; 
+            color: white; /* Cor branca para as setas */
+        }
+        
         .edit { background: dodgerblue; font-size: 20px; }
         .delete { background: red; font-size: 20px; }
         .next { background: red; }
@@ -129,7 +141,6 @@
                 <button class="copy" id="btnCopiar">Copiar</button>
             </div>
 
-            <!-- NOVA SEÇÃO DE ADICIONAR -->
             <div class="add-section">
                 <input type="text" id="inputNovoFuncionario" placeholder="Digite o nick">
                 <button class="add" id="btnAdicionar">Adicionar</button>
@@ -165,8 +176,8 @@
                         <td>${nome}</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="up" data-action="moverUp" data-index="${i}">⬆️</button>
-                                <button class="down" data-action="moverDown" data-index="${i}">⬇️</button>
+                                <button class="up" data-action="moverUp" data-index="${i}">↥</button>
+                                <button class="down" data-action="moverDown" data-index="${i}">↧</button>
                                 <button class="edit" data-action="editar" data-index="${i}">✏️</button>
                                 <button class="delete" data-action="remover" data-index="${i}">❌</button>
                             </div>
@@ -323,5 +334,3 @@
     </script>
 </body>
 </html>
-
-
