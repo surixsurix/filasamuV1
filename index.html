@@ -165,6 +165,11 @@
 
         function salvarEstado() { filaAnterior = [...fila]; }
 
+        // Retorna a janela (window) correta: PiP se ativo, ou a principal (window)
+        function getTargetWindow() {
+            return isPiPActive && pipWindow ? pipWindow : window;
+        }
+        
         // renderizar aceita o document alvo
         function renderizar(doc = isPiPActive && pipWindow ? pipWindow.document : document) {
             const corpo = doc.getElementById("corpoTabela");
@@ -198,7 +203,14 @@
             }
         }
         function remover(i) { salvarEstado(); fila.splice(i, 1); renderizar(); }
-        function editar(i) { salvarEstado(); let novoNome = prompt("Editar nome:", fila[i]); if (novoNome) fila[i] = novoNome; renderizar(); }
+        
+        // **Função editar alterada para usar a janela (window) alvo**
+        function editar(i, win = window) { 
+            salvarEstado(); 
+            let novoNome = win.prompt("Editar nome:", fila[i]); 
+            if (novoNome) fila[i] = novoNome; 
+            renderizar(); 
+        }
 
         function adicionar(doc = isPiPActive && pipWindow ? pipWindow.document : document) { 
             salvarEstado();
@@ -265,13 +277,15 @@
 
         // Rebind de eventos sempre após renderizar
         function rebindEvents(doc = isPiPActive && pipWindow ? pipWindow.document : document) {
+            const currentWin = doc.defaultView || window; // Obter a janela do documento atual
+
             doc.querySelectorAll("[data-action]").forEach(btn => {
                 btn.onclick = () => {
                     let i = parseInt(btn.dataset.index);
                     switch (btn.dataset.action) {
                         case "moverUp": mover(i, -1); break;
                         case "moverDown": mover(i, 1); break;
-                        case "editar": editar(i); break;
+                        case "editar": editar(i, currentWin); break; // **Passando a janela correta aqui**
                         case "remover": remover(i); break;
                     }
                 };
@@ -300,7 +314,6 @@
             } catch (e) { alert("Erro PiP"); return; }
 
             // Copia o conteúdo (innerHTML) para o PiP
-            // O container (fundo branco) é copiado.
             pipWindow.document.body.innerHTML = `
                 <div id="queueContent">${queueContent.innerHTML}</div>
                 <div class="footer-logo"><img src="https://i.imgur.com/DgK7zg0.png"></div>
