@@ -156,7 +156,7 @@
     <audio id="notificacaoSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg" preload="auto"></audio>
 
     <script>
-        let fila = ["nay", "kaue", "carti"];
+        let fila = ["nay", "wes", "henrique"];
         let filaAnterior = [...fila];
         let pipWindow = null;
         const draggableContainer = document.getElementById("draggableContainer");
@@ -190,7 +190,7 @@
                     </tr>
                 `;
             });
-            doc.getElementById("saida").value = ":r [FILA] " + fila.join(" - ");
+            doc.getElementById("saida").value = ":r" + fila.join(" - ");
             rebindEvents(doc);
         }
 
